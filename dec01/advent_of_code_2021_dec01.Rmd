@@ -1,0 +1,84 @@
+---
+title: "dec01.Rmd"
+author: "Riley King"
+date: "12/4/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  dpi = 300,
+  fig.align = "center",
+  fig.width = 11,
+  fig.height = 7
+)
+```
+
+```{r include=FALSE}
+library(tidyverse)
+library(here)
+library(slider)
+```
+
+#Part 1
+
+## Read in data
+```{r}
+raw_tbl <- read_lines(here("dec01/input.txt")) %>%
+  as_tibble()
+
+clean_tbl <- raw_tbl %>%
+  mutate(value = as.double(value))
+```
+
+## Find differences between rows and determine if the change is an increase
+
+```{r}
+inc_dec_tbl <- clean_tbl %>%
+  mutate(diff = value - lag(value, n = 1)) %>%
+  mutate(inc_dec = case_when(diff > 0 ~ "(increased)",
+                             diff < 0 ~ "(decreased)",
+                             diff == 0 ~ "(no_change)",
+                             TRUE ~ "N/A - no previous measurement")) 
+
+inc_dec_tbl
+```
+
+## Count Instances of Increase
+```{r}
+inc_dec_tbl %>%
+  count(inc_dec)
+```
+
+There are __n=1462__ cases of increasing steps in incremental steps.
+
+# Part 2 
+
+## Calculate rolling windown using **slider** package
+
+Use slide_dbl() function to calculate sum within rolling window of 3 and reclaculate diffs for each step 
+
+```{r}
+roll_3_tbl <- inc_dec_tbl %>%
+  mutate(value_r3 = slide_dbl(.x = value, .f = sum, .before = 2, .complete = TRUE))%>%
+  mutate(diffs_r3 = value_r3 - lag(value_r3, n = 1)) %>%
+  mutate(inc_dec_r3 = case_when(diffs_r3 > 0 ~ "(increased)",
+                             diffs_r3 < 0 ~ "(decreased)",
+                             diffs_r3 == 0 ~ "(no_change)",
+                             TRUE ~ "N/A - no previous measurement")) 
+
+roll_3_tbl
+```
+
+## Count instances of increasing incremental change in rolling window (looking back 2 each time)
+
+```{r}
+roll_3_tbl %>%
+  count(inc_dec_r3)
+```
+
+There are __n=1543__ cases of increasing steps in incremental rolling windows with a look-back period of 2.
