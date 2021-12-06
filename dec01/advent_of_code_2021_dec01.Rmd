@@ -22,6 +22,8 @@ knitr::opts_chunk$set(
 library(tidyverse)
 library(here)
 library(slider)
+library(vapoRwave)
+library(patchwork)
 ```
 
 #Part 1
@@ -40,10 +42,12 @@ clean_tbl <- raw_tbl %>%
 ```{r}
 inc_dec_tbl <- clean_tbl %>%
   mutate(diff = value - lag(value, n = 1)) %>%
-  mutate(inc_dec = case_when(diff > 0 ~ "(increased)",
-                             diff < 0 ~ "(decreased)",
-                             diff == 0 ~ "(no_change)",
-                             TRUE ~ "N/A - no previous measurement")) 
+  mutate(inc_dec = case_when(
+    diff > 0 ~ "(increased)",
+    diff < 0 ~ "(decreased)",
+    diff == 0 ~ "(no_change)",
+    TRUE ~ "N/A - no previous measurement"
+  ))
 
 inc_dec_tbl
 ```
@@ -64,12 +68,14 @@ Use slide_dbl() function to calculate sum within rolling window of 3 and reclacu
 
 ```{r}
 roll_3_tbl <- inc_dec_tbl %>%
-  mutate(value_r3 = slide_dbl(.x = value, .f = sum, .before = 2, .complete = TRUE))%>%
+  mutate(value_r3 = slide_dbl(.x = value, .f = sum, .before = 2, .complete = TRUE)) %>%
   mutate(diffs_r3 = value_r3 - lag(value_r3, n = 1)) %>%
-  mutate(inc_dec_r3 = case_when(diffs_r3 > 0 ~ "(increased)",
-                             diffs_r3 < 0 ~ "(decreased)",
-                             diffs_r3 == 0 ~ "(no_change)",
-                             TRUE ~ "N/A - no previous measurement")) 
+  mutate(inc_dec_r3 = case_when(
+    diffs_r3 > 0 ~ "(increased)",
+    diffs_r3 < 0 ~ "(decreased)",
+    diffs_r3 == 0 ~ "(no_change)",
+    TRUE ~ "N/A - no previous measurement"
+  ))
 
 roll_3_tbl
 ```
@@ -81,4 +87,64 @@ roll_3_tbl %>%
   count(inc_dec_r3)
 ```
 
-There are __n=1543__ cases of increasing steps in incremental rolling windows with a look-back period of 2.
+# Learnings
+
+There are __n=1497__ cases of increasing steps in incremental rolling windows with a look-back period of 2.
+
+>       * There are other packages that will calculate functions over a rolling window including Tidyquant which I'm fond of but slider would let you roll over dates which the other packages can't - that's the reason I would choose to use it going forward even though it wasn't needed here.
+
+>       * Remember that if you want a rolling window of 3 measurements (as requested in this challenge) then the .before argument is set to 2 indicating a lookback period of 2 *previous* values.  Don't be tempted to state 3;  it's the lookback number not the total number.
+
+>       * .complete = TRUE forces the slide() function to only display the rolling outputs involving a complete set of n=3 input values (as requested in this challenge).  Omitting this gets you some partial sums and will count to an incorrect value.
+
+
+# Visualize (for fun)
+
+## Plot Depth vs. Scan Increment
+```{r}
+depth_plt <- roll_3_tbl %>%
+  mutate(row_id = row_number()) %>%
+  ggplot(aes(x = row_id, y = value)) +
+  geom_line(color = "limegreen") +
+  labs(
+    title = "Sonar Readings of Seafloor - Advent of Code 2021, Dec01",
+    subtitle = "Let's find those mf keys!!!",
+    x = "",
+    y = "Depth"
+  ) +
+  scale_y_reverse() +
+  new_retro()
+
+depth_plt
+```
+
+
+## Plot Change in Depth for Each Step and then Rolling Window of 3
+```{r}
+delta_plt <- roll_3_tbl %>%
+  mutate(row_id = row_number()) %>%
+  rename(
+    incremental_change = diff,
+    rolling_window_3 = diffs_r3
+  ) %>%
+  pivot_longer(cols = c(incremental_change, rolling_window_3), names_to = "type", values_to = "val") %>%
+  ggplot(aes(x = row_id, y = val)) +
+  geom_line(aes(y = val, color = type), alpha = .8) +
+  labs(
+    x = "Scan Distance from Sub (Sonar Steps)",
+    y = "Change in\n Depth"
+  ) +
+  new_retro() +
+  theme(legend.title = element_blank())
+
+delta_plt
+```
+
+
+## Combine with Patchwork
+
+```{r}
+(depth_plt/delta_plt) +
+  plot_layout(guides = 'collect')
+```
+
