@@ -24,6 +24,7 @@ library(here)
 library(slider)
 library(wesanderson)
 library(patchwork)
+library(ggforce)
 ```
 
 #Part 1
@@ -123,25 +124,6 @@ steps_tbl %>%
 ```
 Do it right!
 
-```{r}
-
-
-steps_tbl %>%
-  mutate(forward_position = cumsum(forward_step),
-         depth_position = cumsum(depth_step)) %>%
-  ggplot(aes(x = forward_position, 
-             y = depth_position)) +
-  geom_path() +
-  labs(
-    title = "Sonar Readings of Seafloor - Advent of Code 2021, Dec01",
-    subtitle = "Let's find those mf keys!!!",
-    x = "",
-    y = "Depth"
-  ) +
-  scale_y_reverse() +
-  new_retro()
-  
-```
 
 ## Bind Results from Parts 1 and 2
 
@@ -170,8 +152,15 @@ summary_tbl %>%
     title = "Horizontal and Depth Tracking of the Sub - Advent of Code 2021, Dec02",
     subtitle = "We must go deeper!"
   ) +
-  scale_y_reverse() +
+  scale_y_continuous(trans = trans_reverser('log10')) +
   new_retro() +
   theme(legend.title = element_blank())
 ```
 
+
+# Learnings
+
+> *Tidyverse rocks and made a hard problem pretty easy (at least the way my brain works)
+> *If you want to reverse a log scale axis, the easiest way (after Googling) is the ggforce package which has:   scale_y_continuous(trans = trans_reverser('log10')) 
+
+see: https://stackoverflow.com/questions/11053899/how-to-get-a-reversed-log10-scale-in-ggplot2
