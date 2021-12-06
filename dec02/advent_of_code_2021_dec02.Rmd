@@ -118,7 +118,8 @@ This was wrong but made a really cool accidental art image!
 ```{r}
 steps_tbl %>%
   ggplot(aes(x = forward_step, y = depth_step)) +
-  geom_path()
+  geom_path(color = "limegreen") +
+  new_retro()
 ```
 Do it right!
 
