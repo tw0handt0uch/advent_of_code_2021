@@ -1,0 +1,176 @@
+---
+title: "dec02.Rmd"
+author: "Riley King"
+date: "12/5/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  dpi = 300,
+  fig.align = "center",
+  fig.width = 11,
+  fig.height = 7
+)
+```
+
+```{r include=FALSE}
+library(tidyverse)
+library(here)
+library(slider)
+library(wesanderson)
+library(patchwork)
+```
+
+#Part 1
+
+## Read in data
+```{r}
+
+raw_tbl <- read_lines(here("dec02/input.txt")) %>%
+  as_tibble()
+
+```
+
+## Separate Direction and Magnitude, Add cols for forward and depth steps
+
+### Confirm there are no Direction = "Back" Steps (None were included in example)
+
+```{r}
+raw_tbl %>%
+  separate(col = value, into = c("direction", "magnitude")) %>%
+  count(direction)
+
+```
+
+As expected, there are no back steps. Proceed with determining steps of each type:
+
+# Calculate Steps of Each Type
+
+```{r}
+
+steps_tbl <- raw_tbl %>%
+  separate(col = value, into = c("direction", "magnitude")) %>%
+  mutate(magnitude = as.double(magnitude)) %>%
+  mutate(forward_step = case_when(direction == "forward" ~ magnitude,
+                                  TRUE ~ 0)) %>%
+  mutate(depth_step = case_when(direction == "down" ~ magnitude,
+                                direction == "up" ~ magnitude * (-1),
+                                TRUE ~ 0))
+```
+
+## Aggregate Sums of Steps and Multiply Final Answers
+
+```{r}
+step_sum_tbl <- steps_tbl %>% 
+  summarize(forward_sum = sum(forward_step),
+            depth_sum = sum(depth_step)) %>%
+  mutate(step_prod = forward_sum * depth_sum) %>%
+  ungroup()
+
+answer <- step_sum_tbl %>% pluck("step_prod")
+
+print(str_glue("The answer is {answer}"))
+```
+
+# Part 2
+
+## Convert to new movement scheme
+
+Fortunately we aleady had the list of incremental steps so we just rename depth step to aim step.  We need a col to track the cumuluative sum of the aim step which I call "current aim".  Then the depth step is the product of current aim * forward step
+```{r}
+
+aim_tbl <- steps_tbl %>%
+  rename(aim_step = depth_step) %>%
+  mutate(current_aim = cumsum(aim_step)) %>%
+  mutate(depth_step = current_aim * forward_step)
+
+aim_tbl
+```
+
+## Aggregate Horizontal Position and Depth Sums
+
+```{r}
+agg_tbl <- aim_tbl %>%
+  summarize(horizontal_sum = sum(forward_step),
+            depth_sum = sum(depth_step)) %>%
+  mutate(prod = horizontal_sum * depth_sum)
+
+agg_tbl
+```
+
+## Extract Answer
+
+```{r}
+answer_2 <- agg_tbl %>% pluck("prod")
+
+print(str_glue("The answer is {answer_2}"))
+```
+
+# Visualize (for fun)
+
+This was wrong but made a really cool accidental art image!
+
+```{r}
+steps_tbl %>%
+  ggplot(aes(x = forward_step, y = depth_step)) +
+  geom_path()
+```
+Do it right!
+
+```{r}
+
+
+steps_tbl %>%
+  mutate(forward_position = cumsum(forward_step),
+         depth_position = cumsum(depth_step)) %>%
+  ggplot(aes(x = forward_position, 
+             y = depth_position)) +
+  geom_path() +
+  labs(
+    title = "Sonar Readings of Seafloor - Advent of Code 2021, Dec01",
+    subtitle = "Let's find those mf keys!!!",
+    x = "",
+    y = "Depth"
+  ) +
+  scale_y_reverse() +
+  new_retro()
+  
+```
+
+## Bind Results from Parts 1 and 2
+
+```{r}
+summary_tbl <- aim_tbl %>%
+  mutate(depth_using_aim = cumsum(depth_step)) %>%
+  select(depth_using_aim) %>%
+  bind_cols(steps_tbl) %>%
+  mutate(depth_without_aim = cumsum(depth_step),
+         forward_position = cumsum(forward_step)) %>%
+  select(direction, forward_position, depth_without_aim, depth_using_aim) 
+
+summary_tbl
+```
+
+## Reshape and Plot
+
+```{r}
+summary_tbl %>%
+  pivot_longer(cols = c(depth_without_aim, depth_using_aim), names_to = "depth_mode", values_to = "depth_value") %>%
+  ggplot(aes(x = forward_position, y = depth_value)) +
+  geom_path(aes(color = depth_mode)) +
+  labs(
+    x = "Forward Position",
+    y = "Depth Position",
+    title = "Horizontal and Depth Tracking of the Sub - Advent of Code 2021, Dec02",
+    subtitle = "We must go deeper!"
+  ) +
+  scale_y_reverse() +
+  new_retro() +
+  theme(legend.title = element_blank())
+```
+

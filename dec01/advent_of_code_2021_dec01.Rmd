@@ -129,7 +129,7 @@ delta_plt <- roll_3_tbl %>%
   ) %>%
   pivot_longer(cols = c(incremental_change, rolling_window_3), names_to = "type", values_to = "val") %>%
   ggplot(aes(x = row_id, y = val)) +
-  geom_line(aes(y = val, color = type), alpha = .8) +
+  geom_line(aes(color = type), alpha = .8) +
   labs(
     x = "Scan Distance from Sub (Sonar Steps)",
     y = "Change in\n Depth"
