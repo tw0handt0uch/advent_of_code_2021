@@ -1,0 +1,284 @@
+---
+title: "advent_of_code_2021_dec04.Rmd"
+author: "Riley King"
+date: "12/7/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  dpi = 300,
+  fig.align = "center",
+  fig.width = 11,
+  fig.height = 7
+)
+```
+
+```{r include=FALSE}
+library(tidyverse)
+library(here)
+library(slider)
+library(vapoRwave)
+library(patchwork)
+```
+
+
+# Read in Data
+
+## Draws
+
+```{r}
+raw_draws_tbl <- read_lines(here("dec04/input.txt"), n_max = 1) %>%
+  as_tibble()
+
+draws_tbl <- tibble(draws = as.vector(str_split(raw_draws_tbl$value, pattern = ","))) %>% 
+  unnest() %>%
+  mutate(draws = as.double(draws))
+
+draws_tbl 
+```
+## Boards
+
+```{r}
+boards_tbl <- tibble(square_value = as.integer(scan(here("dec04/input.txt"), what = "list", skip = 2))) %>%
+  mutate(board_number = rep(1:(2500/25), each=25),
+         col_number = rep(1:5, times = 2500/5),
+         row_number = rep(rep(1:5, each = 5), times = 2500/25)) %>%
+  mutate(match_flag = 0) 
+
+boards_tbl
+```
+
+## Simulate the Game
+
+```{r}
+
+i_count <- 1
+boards_loop_tbl <- boards_tbl
+max_row_sum <- 0
+max_col_sum <- 0
+rc_sum <- 0
+
+while(rc_sum < 5){
+
+this_draw <- draws_tbl[[i_count,1]]
+
+boards_loop_tbl <- boards_loop_tbl %>%
+  mutate(match_flag = case_when(square_value == this_draw ~ 1,
+                         TRUE ~ match_flag))
+
+row_score_tbl <- boards_loop_tbl %>%
+  group_by(board_number, row_number) %>%
+  summarize(row_sum = sum(match_flag)) %>%
+  ungroup()
+
+col_score_tbl <- boards_loop_tbl %>%
+  group_by(board_number, col_number) %>%
+  summarize(col_sum = sum(match_flag)) %>%
+  ungroup()
+
+max_row_sum <- max(row_score_tbl$row_sum)
+max_col_sum <- max(col_score_tbl$col_sum)
+
+rc_sum <- max(max_row_sum, max_col_sum)
+
+i_count <- i_count + 1
+
+}
+```
+
+
+## Identify Winning Board
+
+```{r}
+col_score_tbl %>%
+  filter(col_sum == 5) 
+```
+
+Board number 17 is the winner with a win down column 1
+
+## Peek at Winning Board 17 
+
+```{r}
+boards_loop_tbl %>%
+  filter(board_number == 17)
+```
+
+## Get Sum of Unmarked Numbers
+
+```{r}
+boards_loop_tbl %>%
+  filter(board_number == 17) %>%
+  group_by(match_flag) %>%
+  summarize(sum_unmarked = sum(square_value))
+
+```
+
+The sum of the unmarked numbers is 858.
+
+## Get Number that Was Just Called
+
+```{r}
+
+numbered_draws <- draws_tbl %>%
+  mutate(draw_sequence = row_number()) %>%
+  rename(square_value = draws)
+
+boards_loop_tbl %>%
+  filter(board_number == 17,
+         match_flag == 1) %>%
+  left_join(numbered_draws, by = "square_value") %>%
+  arrange(desc(draw_sequence))
+
+```
+
+The number just called was 39
+
+# Get Answer to Pt 1
+
+```{r}
+39 * 858
+```
+
+The answer to Part 1 is 33462
+
+# Part 2
+
+## Which Board Wins Last
+
+
+```{r}
+
+i_count <- 1
+boards_loop_tbl <- boards_tbl
+bingo_counter <-  0
+all_bingo_tbl <- tibble(board_number = 1000,
+                        max_row_sum = 1000,
+                        max_col_sum = 1000,
+                        max_either = 1000,
+                        bingo_yet = 1000,
+                        winning_draw = 1000)
+```
+
+```{r}
+
+while(bingo_counter < 101){
+
+this_draw <- draws_tbl[[i_count,1]]
+
+boards_loop_tbl <- boards_loop_tbl %>%
+  mutate(match_flag = case_when(square_value == this_draw ~ 1,
+                         TRUE ~ match_flag))
+
+row_score_tbl <- boards_loop_tbl %>%
+  group_by(board_number, row_number) %>%
+  summarize(row_sum = sum(match_flag)) %>%
+  ungroup() %>%
+  group_by(board_number) %>%
+  summarize(max_row_sum = max(row_sum)) %>%
+  ungroup()
+
+col_score_tbl <- boards_loop_tbl %>%
+  group_by(board_number, col_number) %>%
+  summarize(col_sum = sum(match_flag)) %>%
+  ungroup() %>%
+  group_by(board_number) %>%
+  summarize(max_col_sum = max(col_sum)) %>%
+  ungroup()
+
+remaining_boards_tbl <- row_score_tbl %>%
+  inner_join(col_score_tbl) %>%
+  rowwise() %>%
+  mutate(max_either = max(max_row_sum, max_col_sum)) %>%
+  ungroup() %>%
+  mutate(bingo_yet= case_when(max_either == 5 ~ 1,
+                              TRUE ~ 0)) %>%
+  mutate(winning_draw = this_draw) %>%
+  ungroup() 
+
+this_bingo_tbl <- remaining_boards_tbl %>%
+  filter(bingo_yet == 1)
+
+all_bingo_tbl <- all_bingo_tbl %>% 
+  bind_rows(this_bingo_tbl)
+
+bingo_counter <- nrow(all_bingo_tbl)
+
+if(bingo_counter != 101){
+  
+  boards_loop_tbl <- boards_loop_tbl %>%
+  filter(board_number %notin% this_bingo_tbl$board_number)
+
+}else{
+    break
+  }
+
+i_count <- i_count + 1
+  
+
+}
+
+
+```
+
+## Get Sum of Unmarked Squares
+
+```{r}
+boards_loop_tbl %>%
+  filter(match_flag == 0) %>%
+  summarize(sum = sum(square_value))
+```
+
+The sum of the unmarked squares is 310
+
+## Get Last Number Drawn
+```{r}
+all_bingo_tbl 
+```
+
+The winning draw was 97
+
+## Get Answer to Part 2
+
+```{r}
+97*310
+```
+
+# Learnings
+
+> *scan() function helped read in messy data
+> *%notin% custom operator helped for filtering
+> *if/then statements in a while loop with 'break' keyword to exit as needed
+> *control flow in general 
+
+# Visualize
+
+```{r}
+boards_loop_tbl
+```
+
+```{r}
+boards_loop_tbl %>% 
+  mutate(match_flag = as_factor(match_flag)) %>%
+  ggplot(aes(x = col_number, y = row_number, fill = match_flag)) +
+  geom_tile(aes(color = "black")) +
+  geom_segment(aes(x = 1, y = 1, xend = 1, yend = 5), linetype = 2, color = "limegreen") +
+geom_text(aes(label = square_value), color = "black", show.legend = FALSE) +
+  labs(
+    title = "Bingo vs. a Giant Squid - Advent of Code 2021, Dec04",
+    subtitle = "Let Nature Win!!! - This is the Slowest Bingo Board",
+    x = "",
+    y = "",
+    caption = "winning line shown in column 1"
+  ) +
+  new_retro()  + 
+  scale_colour_newRetro() + 
+  scale_fill_newRetro() +
+  theme(legend.position = "none") 
+  
+```
+
