@@ -35,7 +35,6 @@ library(ggforce)
 
 raw_tbl <- read_lines(here("dec03/input.txt")) %>%
   as_tibble()
-
 ```
 
 ## Split the Strings
@@ -52,19 +51,23 @@ bits_tbl <- raw_tbl$value %>%
 
 bit_count_tbl <- bits_tbl %>%
   pivot_longer(cols = everything()) %>%
-  mutate(name = as_factor(name),
-         value = as.integer(value)) %>%
+  mutate(
+    name = as_factor(name),
+    value = as.integer(value)
+  ) %>%
   group_by(name) %>%
   summarize(bit_sums = sum(value)) %>%
-  mutate(mcb = case_when(bit_sums >= nrow(bits_tbl) / 2 ~ 1,
-                         bit_sums < 500 ~ 0)) %>%
+  mutate(mcb = case_when(
+    bit_sums >= nrow(bits_tbl) / 2 ~ 1,
+    bit_sums < 500 ~ 0
+  )) %>%
   ungroup() %>%
-  mutate(inverse_mcb = case_when(mcb == 1 ~ 0,
-                                 TRUE ~ 1)) 
- 
-bit_count_tbl 
+  mutate(inverse_mcb = case_when(
+    mcb == 1 ~ 0,
+    TRUE ~ 1
+  ))
 
-
+bit_count_tbl
 ```
 
 ## Reshape and Assemble Gamma and Epsilon
@@ -101,72 +104,73 @@ The answer to Part 1 is 3549854
 Going to try a while loop.  
 
 ```{r}
-#Initialize Values
+# Initialize Values
 start_tbl <- raw_tbl
 i_count <- 1
 row_counter <- nrow(start_tbl)
 
-while(row_counter > 1){
-  
+while (row_counter > 1) {
   temp_tbl <- start_tbl$value %>%
-  str_split("", simplify = TRUE) %>%
-  as_tibble() %>%
-  bind_cols(start_tbl) %>%
-  select(value, everything()) %>%
-  select(1,1+i_count) %>%
-  mutate_at(.vars = 2, as.numeric) %>%
-  rename(new_var = 2)
+    str_split("", simplify = TRUE) %>%
+    as_tibble() %>%
+    bind_cols(start_tbl) %>%
+    select(value, everything()) %>%
+    select(1, 1 + i_count) %>%
+    mutate_at(.vars = 2, as.numeric) %>%
+    rename(new_var = 2)
 
-  start_tbl <- temp_tbl %>% 
-  mutate(more = case_when(mean(temp_tbl[[2]]) >= .5 ~ 1,
-                          TRUE ~ 0) ) %>%
-  filter(more == new_var) %>%
-  select(value)
+  start_tbl <- temp_tbl %>%
+    mutate(more = case_when(
+      mean(temp_tbl[[2]]) >= .5 ~ 1,
+      TRUE ~ 0
+    )) %>%
+    filter(more == new_var) %>%
+    select(value)
 
-i_count <- i_count + 1
+  i_count <- i_count + 1
 
-row_counter <-  nrow(start_tbl)
-
+  row_counter <- nrow(start_tbl)
 }
 
 oxygen_tbl <- start_tbl %>%
   mutate(decimal = strtoi(value, base = 2))
 
 oxygen_tbl
-
 ```
 
 ## Find CO2 Scrubber Rating
 
 ```{r}
-#Initialize Values
+# Initialize Values
 start_tbl <- raw_tbl
 i_count <- 1
 row_counter <- nrow(start_tbl)
 
-while(row_counter > 1){
-  
+while (row_counter > 1) {
   temp_tbl <- start_tbl$value %>%
-  str_split("", simplify = TRUE) %>%
-  as_tibble() %>%
-  bind_cols(start_tbl) %>%
-  select(value, everything()) %>%
-  select(1,1+i_count) %>%
-  mutate_at(.vars = 2, as.numeric) %>%
-  rename(new_var = 2)
+    str_split("", simplify = TRUE) %>%
+    as_tibble() %>%
+    bind_cols(start_tbl) %>%
+    select(value, everything()) %>%
+    select(1, 1 + i_count) %>%
+    mutate_at(.vars = 2, as.numeric) %>%
+    rename(new_var = 2)
 
-  start_tbl <- temp_tbl %>% 
-  mutate(more = case_when(mean(temp_tbl[[2]]) >= .5 ~ 1,
-                          TRUE ~ 0)) %>%
-  mutate(less = case_when(more == 1 ~ 0,
-                          TRUE ~ 1)) %>%
-  filter(less == new_var) %>%
-  select(value)
+  start_tbl <- temp_tbl %>%
+    mutate(more = case_when(
+      mean(temp_tbl[[2]]) >= .5 ~ 1,
+      TRUE ~ 0
+    )) %>%
+    mutate(less = case_when(
+      more == 1 ~ 0,
+      TRUE ~ 1
+    )) %>%
+    filter(less == new_var) %>%
+    select(value)
 
-i_count <- i_count + 1
+  i_count <- i_count + 1
 
-row_counter <-  nrow(start_tbl)
-
+  row_counter <- nrow(start_tbl)
 }
 
 co2_tbl <- start_tbl %>%
@@ -178,7 +182,7 @@ co2_tbl
 ## Life Support Rating
 
 ```{r}
-lsr <- oxygen_tbl[[1,2]] * co2_tbl[[1,2]]
+lsr <- oxygen_tbl[[1, 2]] * co2_tbl[[1, 2]]
 
 lsr
 ```
@@ -197,23 +201,27 @@ So many!
 # Visualize (for fun)
 
 ```{r }
-bit_name_tbl <- tibble(x = "bit_",
-                       y = seq(1, 12, length.out = 12)) %>%
+bit_name_tbl <- tibble(
+  x = "bit_",
+  y = seq(1, 12, length.out = 12)
+) %>%
   unite("new_name", x:y, sep = "")
 
 bit_count_tbl %>%
   bind_cols(bit_name_tbl) %>%
-  mutate(mcb = as_factor(mcb),
-         new_name = as_factor(new_name)) %>%
- # mutate(mcb = case_when(mcb == 1))
+  mutate(
+    mcb = as_factor(mcb),
+    new_name = as_factor(new_name)
+  ) %>%
+  # mutate(mcb = case_when(mcb == 1))
   ggplot(aes(x = new_name, y = bit_sums)) +
   geom_col(aes(fill = mcb)) +
   new_retro() +
-  labs(x = "",
-       y = "Sum of 1's",
-       fill = "Most Common\n Bit in\n Position",
-       title = "Sum of the 1's in each Bit Position",
-       subtitle = "Bit sums > 500 indicate 1 is more common than 0")
+  labs(
+    x = "",
+    y = "Sum of 1's",
+    fill = "Most Common\n Bit in\n Position",
+    title = "Sum of the 1's in each Bit Position",
+    subtitle = "Bit sums > 500 indicate 1 is more common than 0"
+  )
 ```
-
-

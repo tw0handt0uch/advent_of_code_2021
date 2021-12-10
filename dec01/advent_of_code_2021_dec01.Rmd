@@ -144,7 +144,6 @@ delta_plt
 ## Combine with Patchwork
 
 ```{r}
-(depth_plt/delta_plt) +
-  plot_layout(guides = 'collect')
+(depth_plt / delta_plt) +
+  plot_layout(guides = "collect")
 ```
-

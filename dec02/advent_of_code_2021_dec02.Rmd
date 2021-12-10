@@ -34,7 +34,6 @@ library(ggforce)
 
 raw_tbl <- read_lines(here("dec02/input.txt")) %>%
   as_tibble()
-
 ```
 
 ## Separate Direction and Magnitude, Add cols for forward and depth steps
@@ -45,7 +44,6 @@ raw_tbl <- read_lines(here("dec02/input.txt")) %>%
 raw_tbl %>%
   separate(col = value, into = c("direction", "magnitude")) %>%
   count(direction)
-
 ```
 
 As expected, there are no back steps. Proceed with determining steps of each type:
@@ -57,19 +55,25 @@ As expected, there are no back steps. Proceed with determining steps of each typ
 steps_tbl <- raw_tbl %>%
   separate(col = value, into = c("direction", "magnitude")) %>%
   mutate(magnitude = as.double(magnitude)) %>%
-  mutate(forward_step = case_when(direction == "forward" ~ magnitude,
-                                  TRUE ~ 0)) %>%
-  mutate(depth_step = case_when(direction == "down" ~ magnitude,
-                                direction == "up" ~ magnitude * (-1),
-                                TRUE ~ 0))
+  mutate(forward_step = case_when(
+    direction == "forward" ~ magnitude,
+    TRUE ~ 0
+  )) %>%
+  mutate(depth_step = case_when(
+    direction == "down" ~ magnitude,
+    direction == "up" ~ magnitude * (-1),
+    TRUE ~ 0
+  ))
 ```
 
 ## Aggregate Sums of Steps and Multiply Final Answers
 
 ```{r}
-step_sum_tbl <- steps_tbl %>% 
-  summarize(forward_sum = sum(forward_step),
-            depth_sum = sum(depth_step)) %>%
+step_sum_tbl <- steps_tbl %>%
+  summarize(
+    forward_sum = sum(forward_step),
+    depth_sum = sum(depth_step)
+  ) %>%
   mutate(step_prod = forward_sum * depth_sum) %>%
   ungroup()
 
@@ -97,8 +101,10 @@ aim_tbl
 
 ```{r}
 agg_tbl <- aim_tbl %>%
-  summarize(horizontal_sum = sum(forward_step),
-            depth_sum = sum(depth_step)) %>%
+  summarize(
+    horizontal_sum = sum(forward_step),
+    depth_sum = sum(depth_step)
+  ) %>%
   mutate(prod = horizontal_sum * depth_sum)
 
 agg_tbl
@@ -132,9 +138,11 @@ summary_tbl <- aim_tbl %>%
   mutate(depth_using_aim = cumsum(depth_step)) %>%
   select(depth_using_aim) %>%
   bind_cols(steps_tbl) %>%
-  mutate(depth_without_aim = cumsum(depth_step),
-         forward_position = cumsum(forward_step)) %>%
-  select(direction, forward_position, depth_without_aim, depth_using_aim) 
+  mutate(
+    depth_without_aim = cumsum(depth_step),
+    forward_position = cumsum(forward_step)
+  ) %>%
+  select(direction, forward_position, depth_without_aim, depth_using_aim)
 
 summary_tbl
 ```
@@ -152,7 +160,7 @@ summary_tbl %>%
     title = "Horizontal and Depth Tracking of the Sub - Advent of Code 2021, Dec02",
     subtitle = "We must go deeper!"
   ) +
-  scale_y_continuous(trans = trans_reverser('log10')) +
+  scale_y_continuous(trans = trans_reverser("log10")) +
   new_retro() +
   theme(legend.title = element_blank())
 ```
