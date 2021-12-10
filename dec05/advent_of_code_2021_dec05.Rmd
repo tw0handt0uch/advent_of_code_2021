@@ -117,11 +117,10 @@ diag_tbl <- clean_tbl %>%
 diag_points_tbl <- diag_tbl %>%
   rowwise() %>%
   mutate(
-    x = map2(.x = x1, .y = x2, ~ list(seq(from = x1, to = x2)), by = slope),
-    y = map2(.x = y1, .y = y2, ~ list(seq(from = y1, to = y2)), by = slope)
+    x = map2(.x = x1, .y = x2, ~ seq(from = x1, to = x2), by = slope),
+    y = map2(.x = y1, .y = y2, ~ seq(from = y1, to = y2), by = slope)
   ) %>%
-  unnest() %>%
-  unnest()
+  unnest() 
 
 diag_points_tbl
 ```
